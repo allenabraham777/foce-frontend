@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screens/camera.dart';
 import 'package:frontend/utils/auth.dart';
 import 'dart:convert';
 
@@ -72,7 +73,9 @@ class _HomePageState extends State<HomePage> {
         centerTitle: true,
         actions: <Widget>[
           InkWell(
-            onTap: () {},
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => CameraPage()));
+            },
             child: Icon(Icons.camera_alt),
           ),
           SizedBox(width: 10),
