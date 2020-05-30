@@ -8,20 +8,37 @@ enum CamState {
   cameraOff,
   loadingData
 }
+
+enum OptionalState {
+  none,
+  piece,
+  cup
+}
+
 class CameraPage extends StatefulWidget {
+  CameraPage({this.goBack});
+  final VoidCallback goBack;
   @override
   _CameraPageState createState() => _CameraPageState();
 }
 
 class _CameraPageState extends State<CameraPage> {
   CamState camState = CamState.cameraOn;
+  OptionalState optionalState = OptionalState.none;
   bool result = false;
   File _image;
   String food, calorie;
+  String dropdownValue;
+  final TextEditingController _piecesController = new TextEditingController();
+  final TextEditingController _bowlsController = new TextEditingController();
 
   Future getImage() async {
     File image;
-    image = await ImagePicker.pickImage(source: ImageSource.camera);
+    image = await ImagePicker.pickImage(
+      source: ImageSource.camera,
+      maxHeight: 800.0,
+      maxWidth: 800.0
+    );
     setState(() {
       _image = image;
       camState = CamState.cameraOff;
@@ -35,14 +52,19 @@ class _CameraPageState extends State<CameraPage> {
     });
   }
 
-  void processdata() async{
+  void processdata(BuildContext context) async{
     Prediction pred = new Prediction();
     File image = _image;
     setState(() {
       result = false;
       camState = CamState.loadingData;
     });
-    Map res = await pred.predictCalorie(image);
+    Map res = await pred.predictCalorie(image,piece: _piecesController.value.text, bowl: _bowlsController.value.text);
+    print(res);
+    if(res["error"] != null) { 
+      Navigator.of(context).pop();
+      widget.goBack();
+    }
     setState(() {
       food = res["food"];
       calorie = res["calorie"];
@@ -50,11 +72,32 @@ class _CameraPageState extends State<CameraPage> {
     });
   }
 
+  List<DropdownMenuItem<String>> listDrop = [
+    DropdownMenuItem(
+      child: Text(
+        "No. of Pieces",
+        style: TextStyle(fontSize: 20.0),
+      ),
+      value: 'pieces'
+    ),
+    DropdownMenuItem(
+      child: Text(
+        "No. of Cups",
+        style: TextStyle(fontSize: 20.0),
+      ),
+      value: 'cups'
+    ),
+    DropdownMenuItem(
+      child: Text(
+        "None",
+        style: TextStyle(fontSize: 20.0),
+      ),
+      value: 'none'
+    )
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final TextEditingController _piecesController = new TextEditingController();
-    final TextEditingController _bowlsController = new TextEditingController();
     switch(camState) {
       case CamState.cameraOn: getImage();
         break;
@@ -74,35 +117,58 @@ class _CameraPageState extends State<CameraPage> {
                         ) : Image.file(_image, height: 250.0, width: 250.0)
                       ),
                       SizedBox(height: 20.0),
-                      TextField(
-                        controller: _piecesController,
-                        decoration: InputDecoration(
-                          labelText: 'No. of Pieces (Optional)',
-                          labelStyle: TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey),
-                          focusedBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(
-                              color: Colors.green
-                            )
-                          )
+                      DropdownButton<String>(
+                        value : dropdownValue,
+                        underline: Container(
+                          height: 2,
+                          color: Colors.green,
                         ),
+                        hint: Text(
+                          'Optional - for fast processing',
+                          style: TextStyle(fontSize: 20.0),
+                        ),
+                        items: listDrop,
+                        onChanged: (_) {
+                          setState(() {
+                            _=='pieces' ? optionalState=OptionalState.piece: _=='cups' ? optionalState=OptionalState.cup : optionalState=OptionalState.none;
+                            dropdownValue = _;
+                          });
+                        },
                       ),
-                      TextField(
-                        controller: _bowlsController,
-                        decoration: InputDecoration(
-                          labelText: 'No. of Bowls (Optional)',
-                          labelStyle: TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey),
-                          focusedBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(
-                              color: Colors.green
-                            )
-                          )
-                        ),
+                      optionalState != OptionalState.none ? SizedBox(height: 20.0) : SizedBox(height: 0),
+                      Container(
+                        child: optionalState == OptionalState.piece?
+                          TextField(
+                            controller: _piecesController,
+                            decoration: InputDecoration(
+                              labelText: 'No. of Pieces (Optional)',
+                              labelStyle: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey),
+                              focusedBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: Colors.green
+                                )
+                              )
+                            ),
+                          ): optionalState == OptionalState.cup ?
+                          TextField(
+                            controller: _bowlsController,
+                            decoration: InputDecoration(
+                              labelText: 'No. of Bowls (Optional)',
+                              labelStyle: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey),
+                              focusedBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: Colors.green
+                                )
+                              )
+                            ),
+                          ) :
+                          Container()
                       ),
                       SizedBox(height: 20.0),
                       Row(
@@ -110,7 +176,7 @@ class _CameraPageState extends State<CameraPage> {
                         children: <Widget>[
                           InkWell(
                             onTap: () {
-                              processdata();
+                              processdata(context);
                             },
                             child: Row(
                               children: <Widget>[
@@ -202,7 +268,21 @@ class _CameraPageState extends State<CameraPage> {
                   ),
                 )
               ):Center(
-                child: Text("Loading........")
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: <Widget>[
+                    Text(
+                      "Calculating",
+                      style: TextStyle(
+                        color: Colors.blueAccent,
+                        fontSize: 24
+                      ),
+                    ),
+                    SizedBox(height: 50),
+                    CircularProgressIndicator(),
+                  ],
+                ),
               )
             ),
           ),

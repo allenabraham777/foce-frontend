@@ -74,7 +74,7 @@ class _HomePageState extends State<HomePage> {
         actions: <Widget>[
           InkWell(
             onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => CameraPage()));
+              Navigator.push(context, MaterialPageRoute(builder: (context) => CameraPage(goBack: widget.onSignedOut)));
             },
             child: Icon(Icons.camera_alt),
           ),
